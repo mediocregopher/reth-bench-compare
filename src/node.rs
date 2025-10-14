@@ -54,16 +54,18 @@ impl NodeManager {
 
     /// Get the log file path for a given reference type
     fn get_log_file_path(&self, ref_type: &str) -> Result<PathBuf> {
-        let comparison_dir = self.comparison_dir.as_ref()
+        let comparison_dir = self
+            .comparison_dir
+            .as_ref()
             .ok_or_eyre("Comparison directory not set. Call set_comparison_dir first.")?;
-        
+
         // The comparison directory already contains the full path to results/<timestamp>
         let log_dir = comparison_dir.join(ref_type);
-        
+
         // Create the directory if it doesn't exist
         fs::create_dir_all(&log_dir)
             .wrap_err(format!("Failed to create log directory: {:?}", log_dir))?;
-        
+
         let log_file = log_dir.join("reth_node.log");
         Ok(log_file)
     }
@@ -76,7 +78,10 @@ impl NodeManager {
             if !rate_str.is_empty() {
                 if let Ok(system_rate) = rate_str.parse::<u32>() {
                     let capped_rate = std::cmp::min(system_rate, 10000);
-                    info!("Detected perf_event_max_sample_rate: {}, using: {}", system_rate, capped_rate);
+                    info!(
+                        "Detected perf_event_max_sample_rate: {}, using: {}",
+                        system_rate, capped_rate
+                    );
                     return Some(capped_rate.to_string());
                 } else {
                     warn!("Failed to parse perf_event_max_sample_rate: {}", rate_str);
@@ -213,7 +218,6 @@ impl NodeManager {
         }
     }
 
-
     /// Start a reth node using the specified binary path and return the process handle
     pub async fn start_node(
         &mut self,
@@ -275,7 +279,8 @@ impl NodeManager {
 
         // Stream stdout and stderr with prefixes at debug level and to log file
         if let Some(stdout) = child.stdout.take() {
-            let log_file = AsyncFile::create(&log_file_path).await
+            let log_file = AsyncFile::create(&log_file_path)
+                .await
                 .wrap_err(format!("Failed to create log file: {:?}", log_file_path))?;
             tokio::spawn(async move {
                 let reader = AsyncBufReader::new(stdout);
@@ -298,7 +303,10 @@ impl NodeManager {
                 .append(true)
                 .open(&log_file_path)
                 .await
-                .wrap_err(format!("Failed to open log file for stderr: {:?}", log_file_path))?;
+                .wrap_err(format!(
+                    "Failed to open log file for stderr: {:?}",
+                    log_file_path
+                ))?;
             tokio::spawn(async move {
                 let reader = AsyncBufReader::new(stderr);
                 let mut lines = reader.lines();
@@ -391,10 +399,7 @@ impl NodeManager {
             }
             Ok(None) => {
                 // Process is still running, proceed to stop it
-                info!(
-                    "Stopping process gracefully with SIGINT (PID: {})...",
-                    pid
-                );
+                info!("Stopping process gracefully with SIGINT (PID: {})...", pid);
             }
             Err(e) => {
                 return Err(eyre!("Failed to check process status: {}", e));
